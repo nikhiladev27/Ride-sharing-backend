@@ -6,9 +6,9 @@ const cors = require("cors");
 
 const app = express();
 app.use(express.json());
-app.use(cors());
+app.use(cors({ origin: "*" }));;
 
-mongoose.connect("mongodb+srv://nikhilad2023cce:nikhila27@cluster0.10i6nok.mongodb.net/")
+mongoose.connect("mongodb+srv://nikhilad2023cce:nikhila27@cluster0.10i6nok.mongodb.net/rideSharingDB")
 .then(() => console.log("MongoDB Connected"))
 .catch(err => console.error("MongoDB Connection Error:", err));
 
@@ -31,6 +31,7 @@ const rideSchema = new mongoose.Schema({
     driverGender: String,
     petFriendly: Boolean, 
     price: Number,
+   
 });
 
 const Ride = mongoose.model("Ride", rideSchema);
@@ -80,27 +81,35 @@ app.post("/post-ride", async (req, res) => {
 });
 
 
-app.post("/book-ride/:rideId", async (req, res) => {
-    const { userId } = req.body; 
+app.post("/book-ride", async (req, res) => {
+    const { rideId, userId } = req.body; // Expecting both rideId and userId in the body
+  
     try {
-        const ride = await Ride.findById(req.params.rideId);
-        if (!ride) {
-            return res.status(404).json({ message: "Ride not found" });
-        }
-        if (ride.seatsAvailable === 0) {
-            return res.status(400).json({ message: "No seats available" });
-        }
-
-        
-        ride.seatsAvailable -= 1;
-        await ride.save();
-
-        res.status(200).json({ message: "Ride booked successfully!" });
+      const user = await User.findById(userId);
+      if (!user) {
+        return res.status(400).json({ message: "User not found" });
+      }
+  
+      const ride = await Ride.findById(rideId);
+      if (!ride) {
+        return res.status(404).json({ message: "Ride not found" });
+      }
+      if (ride.seatsAvailable <= 0) {
+        return res.status(400).json({ message: "No seats available" });
+      }
+  
+      ride.seatsAvailable -= 1;
+      ride.passengerName = user.name;
+      ride.passengerEmail = user.email;
+  
+      await ride.save();
+  
+      res.status(200).json({ message: "Ride booked successfully" });
     } catch (error) {
-        res.status(500).json({ message: "Error booking ride", error });
+      res.status(500).json({ message: "Error booking ride", error });
     }
-});
-
+  });
+  
 
 
 app.get("/rides", async (req, res) => {
